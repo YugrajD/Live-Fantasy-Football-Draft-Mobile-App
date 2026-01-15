@@ -6,7 +6,6 @@ A real-time multiplayer fantasy football draft application showcasing WebSocket 
 
 - **Real-time Multiplayer Draft** - Live synchronization across multiple devices via WebSockets
 - **Snake Draft Order** - Traditional fantasy draft format (1,2,3,4,4,3,2,1...)
-- **Pick Timer** - 30-second countdown with auto-pick on timeout
 - **Live Updates** - Real-time pick feed, team rosters, and turn indicators
 - **Event-Driven Architecture** - SQS queue for async post-draft processing
 - **Modern Mobile UI** - Dark theme, professional design, responsive layout
