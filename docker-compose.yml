@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: draft
+      POSTGRES_PASSWORD: draft
+      POSTGRES_DB: fantasy_draft
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U draft"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - "./localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh"
+      - localstack_data:/tmp/localstack
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://draft:draft@db:5432/fantasy_draft
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/draft-events
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./backend
+    command: python worker/worker.py
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://draft:draft@db:5432/fantasy_draft
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/draft-events
+    depends_on:
+      - db
+      - localstack
+    volumes:
+      - ./backend:/app
+
+volumes:
+  postgres_data:
+  localstack_data:
+
