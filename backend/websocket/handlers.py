@@ -104,7 +104,7 @@ async def handle_pick(
         from db.queries import get_teams_by_room
         teams = await get_teams_by_room(db, room_id)
         teams_data = {
-            user_name: [PlayerResponse.model_validate(p).model_dump() for p in players]
+            user_name: [PlayerResponse.model_validate(p).model_dump(mode='json') for p in players]
             for user_name, players in teams.items()
         }
         
@@ -134,7 +134,7 @@ async def handle_pick(
     await manager.broadcast(str(room_id), {
         "event": "pick_made",
         "user": user_name,
-        "player": PlayerResponse.model_validate(player).model_dump(),
+        "player": PlayerResponse.model_validate(player).model_dump(mode='json'),
         "pick_number": pick_number,
         "next_turn": next_turn
     })
@@ -168,13 +168,13 @@ async def send_sync_message(room_id: UUID, db: AsyncSession):
         {
             "pick_number": p.pick_number,
             "user_name": p.participant.user_name,
-            "player": PlayerResponse.model_validate(p.player).model_dump(),
+            "player": PlayerResponse.model_validate(p.player).model_dump(mode='json'),
             "picked_at": p.picked_at.isoformat()
         }
         for p in picks
     ]
     
-    available_data = [PlayerResponse.model_validate(p).model_dump() for p in available]
+    available_data = [PlayerResponse.model_validate(p).model_dump(mode='json') for p in available]
     
     room_data = {
         "id": str(room.id),

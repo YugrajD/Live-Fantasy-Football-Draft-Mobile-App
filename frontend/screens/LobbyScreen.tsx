@@ -88,6 +88,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ navigation, route }) =
     }
   };
 
+  // Use WebSocket room if available, otherwise fall back to REST API room
+  const displayRoom = wsRoom || room;
+
   const handleStartDraft = async () => {
     if (!isHost) {
       Alert.alert('Error', 'Only the host can start the draft');
@@ -104,12 +107,12 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ navigation, route }) =
     }
   };
 
-  const participants = room?.participants || [];
+  const participants = displayRoom?.participants || [];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.roomName}>{room?.name || 'Loading...'}</Text>
+        <Text style={styles.roomName}>{displayRoom?.name || 'Loading...'}</Text>
         <View style={styles.roomCodeContainer}>
           <Text style={styles.roomCodeLabel}>Room Code</Text>
           <Text style={styles.roomCode}>{roomCode}</Text>

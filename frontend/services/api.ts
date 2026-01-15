@@ -4,6 +4,7 @@ const API_BASE_URL = config.API_URL;
 
 export interface CreateRoomRequest {
   name: string;
+  host_name: string;
   turn_time_sec?: number;
   total_rounds?: number;
 }
@@ -92,49 +93,49 @@ class ApiService {
 
   // Rooms
   async createRoom(data: CreateRoomRequest): Promise<CreateRoomResponse> {
-    return this.request<CreateRoomResponse>('/api/rooms', {
+    return this.request<CreateRoomResponse>('/rooms', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async getRoom(roomId: string): Promise<RoomResponse> {
-    return this.request<RoomResponse>(`/api/rooms/${roomId}`);
+    return this.request<RoomResponse>(`/rooms/${roomId}`);
   }
 
   async getRoomByCode(code: string): Promise<{ room_id: string }> {
-    return this.request<{ room_id: string }>(`/api/rooms/code/${code}`);
+    return this.request<{ room_id: string }>(`/rooms/code/${code}`);
   }
 
   async joinRoom(roomId: string, data: JoinRoomRequest): Promise<JoinRoomResponse> {
-    return this.request<JoinRoomResponse>(`/api/rooms/${roomId}/join`, {
+    return this.request<JoinRoomResponse>(`/rooms/${roomId}/join`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async startDraft(roomId: string): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>(`/api/rooms/${roomId}/start`, {
+    return this.request<{ success: boolean; message: string }>(`/rooms/${roomId}/start`, {
       method: 'POST',
     });
   }
 
   // Players
   async getPlayers(): Promise<PlayersListResponse> {
-    return this.request<PlayersListResponse>('/api/players');
+    return this.request<PlayersListResponse>('/players');
   }
 
   async getAvailablePlayers(roomId: string): Promise<PlayersListResponse> {
-    return this.request<PlayersListResponse>(`/api/players/rooms/${roomId}/available`);
+    return this.request<PlayersListResponse>(`/players/rooms/${roomId}/available`);
   }
 
   // Picks
   async getPicks(roomId: string): Promise<PicksListResponse> {
-    return this.request<PicksListResponse>(`/api/rooms/${roomId}/picks`);
+    return this.request<PicksListResponse>(`/rooms/${roomId}/picks`);
   }
 
   async getTeams(roomId: string): Promise<TeamsResponse> {
-    return this.request<TeamsResponse>(`/api/rooms/${roomId}/teams`);
+    return this.request<TeamsResponse>(`/rooms/${roomId}/teams`);
   }
 }
 

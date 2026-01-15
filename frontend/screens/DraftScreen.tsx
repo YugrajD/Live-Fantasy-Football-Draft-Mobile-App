@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ScrollView,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDraftState } from '../hooks/useDraftState';
-import { PlayerCard } from '../components/PlayerCard';
 import { Timer } from '../components/Timer';
-import { TurnIndicator } from '../components/TurnIndicator';
 import { colors, spacing, borderRadius } from '../src/theme';
+import { Player } from '../types';
 
 interface DraftScreenProps {
   navigation: any;
@@ -24,6 +25,33 @@ interface DraftScreenProps {
     };
   };
 }
+
+
+const PlayerRow: React.FC<{
+  player: Player;
+  onSelect: (playerId: string) => void;
+  disabled: boolean;
+}> = ({ player, onSelect, disabled }) => {
+  return (
+    <TouchableOpacity
+      style={[styles.playerRow, disabled && styles.playerRowDisabled]}
+      onPress={() => onSelect(player.id)}
+      disabled={disabled}
+    >
+      <View style={styles.playerRowLeft}>
+        <Text style={styles.playerPosition}>{player.position}</Text>
+        <View>
+          <Text style={styles.playerName}>{player.name}</Text>
+          <Text style={styles.playerTeam}>{player.team}</Text>
+        </View>
+      </View>
+      <View style={styles.playerRowRight}>
+        <Text style={styles.playerFpts}>{player.fantasy_pts}</Text>
+        <Text style={styles.playerFptsLabel}>FPTS</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export const DraftScreen: React.FC<DraftScreenProps> = ({ navigation, route }) => {
   const { roomId, userName } = route.params;
@@ -41,9 +69,21 @@ export const DraftScreen: React.FC<DraftScreenProps> = ({ navigation, route }) =
     userName,
   });
 
+  const [search, setSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const totalPicks = room ? room.total_rounds * (room.participants?.length || 1) : 0;
-  const currentPick = room?.current_pick || 0;
-  const roundNumber = Math.floor(currentPick / (room?.participants?.length || 1)) + 1;
+  // Use picks length to determine current pick number if room.current_pick isn't updating
+  const currentPick = picks.length > 0 ? picks.length : (room?.current_pick || 0);
+  const numParticipants = room?.participants?.length || 1;
+  const roundNumber = Math.floor(currentPick / numParticipants) + 1;
+
+  const filteredPlayers = useMemo(() => {
+    return availablePlayers.filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+      return matchesSearch;
+    });
+  }, [availablePlayers, search]);
 
   const handlePlayerSelect = (playerId: string) => {
     if (!isMyTurn) {
@@ -98,57 +138,85 @@ export const DraftScreen: React.FC<DraftScreenProps> = ({ navigation, route }) =
       </View>
 
       <View style={styles.content}>
-        <View style={styles.mainSection}>
+        <View style={[styles.mainSection, drawerOpen && styles.mainSectionNarrow]}>
           <Text style={styles.sectionTitle}>Available Players</Text>
+          
+          {/* Search Bar */}
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search players..."
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          {/* Player List */}
           <FlatList
-            data={availablePlayers}
+            data={filteredPlayers}
             keyExtractor={(item) => item.id}
-            numColumns={2}
             renderItem={({ item }) => (
-              <PlayerCard
+              <PlayerRow
                 player={item}
                 onSelect={handlePlayerSelect}
                 disabled={!isMyTurn}
               />
             )}
-            style={styles.playerGrid}
+            style={styles.playerList}
+            contentContainerStyle={styles.playerListContent}
           />
         </View>
 
-        <View style={styles.sidebar}>
-          <View style={styles.teamSection}>
-            <Text style={styles.sectionTitle}>My Team ({myTeam.length})</Text>
-            <FlatList
-              data={myTeam}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.teamPlayer}>
-                  <Text style={styles.teamPlayerName}>{item.name}</Text>
-                  <Text style={styles.teamPlayerInfo}>
-                    {item.position} • {item.team}
-                  </Text>
-                </View>
-              )}
-            />
-          </View>
+        {/* Drawer Toggle Button */}
+        <TouchableOpacity
+          style={styles.drawerToggle}
+          onPress={() => setDrawerOpen(!drawerOpen)}
+        >
+          <Text style={styles.drawerToggleText}>{drawerOpen ? '›' : '‹'}</Text>
+        </TouchableOpacity>
 
-          <View style={styles.pickFeedSection}>
-            <Text style={styles.sectionTitle}>Recent Picks</Text>
-            <FlatList
-              data={recentPicks}
-              keyExtractor={(item, index) => `${item.pick_number}-${index}`}
-              renderItem={({ item }) => (
-                <View style={styles.pickItem}>
-                  <Text style={styles.pickItemNumber}>#{item.pick_number}</Text>
-                  <View style={styles.pickItemContent}>
-                    <Text style={styles.pickItemPlayer}>{item.player.name}</Text>
-                    <Text style={styles.pickItemUser}>{item.user_name}</Text>
+        {/* Drawer */}
+        {drawerOpen && (
+          <View style={styles.drawer}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>My Team & Picks</Text>
+            </View>
+
+            <View style={styles.drawerSection}>
+              <Text style={styles.drawerSectionTitle}>MY TEAM ({myTeam.length})</Text>
+              <FlatList
+                data={myTeam}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={styles.drawerItem}>
+                    <Text style={styles.drawerItemName}>{item.name}</Text>
+                    <Text style={styles.drawerItemMeta}>
+                      {item.position} · {item.team}
+                    </Text>
                   </View>
-                </View>
-              )}
-            />
+                )}
+                scrollEnabled={false}
+              />
+            </View>
+
+            <View style={styles.drawerSection}>
+              <Text style={styles.drawerSectionTitle}>RECENT PICKS</Text>
+              <FlatList
+                data={recentPicks}
+                keyExtractor={(item, index) => `${item.pick_number}-${index}`}
+                renderItem={({ item }) => (
+                  <View style={styles.drawerItem}>
+                    <Text style={styles.pickNumberBadge}>#{item.pick_number}</Text>
+                    <View style={styles.drawerItemContent}>
+                      <Text style={styles.drawerItemName}>{item.player.name}</Text>
+                      <Text style={styles.drawerItemMeta}>{item.user_name}</Text>
+                    </View>
+                  </View>
+                )}
+                scrollEnabled={false}
+              />
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -161,7 +229,8 @@ const styles = StyleSheet.create({
   },
   turnBar: {
     backgroundColor: colors.cardBackground,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -204,71 +273,168 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   mainSection: {
-    flex: 2,
-    padding: spacing.sm,
-  },
-  sidebar: {
     flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
-    padding: spacing.sm,
+  },
+  mainSectionNarrow: {
+    flex: 0.6,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  playerGrid: {
+  searchInput: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.textPrimary,
+    fontSize: 15,
+    marginHorizontal: spacing.md,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  playerList: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+  },
+  playerListContent: {
+    paddingBottom: spacing.md,
+  },
+  playerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.cardBackground,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: 12,
+    marginBottom: 8,
+  },
+  playerRowDisabled: {
+    opacity: 0.4,
+  },
+  playerRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     flex: 1,
   },
-  teamSection: {
-    flex: 1,
-    marginBottom: spacing.md,
-  },
-  teamPlayer: {
-    padding: spacing.sm,
-    backgroundColor: colors.backgroundLight,
+  playerPosition: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.secondary,
+    backgroundColor: colors.inputBackground,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
     borderRadius: borderRadius.sm,
-    marginBottom: spacing.xs,
+    overflow: 'hidden',
   },
-  teamPlayerName: {
-    fontSize: 14,
+  playerName: {
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  teamPlayerInfo: {
+  playerTeam: {
     fontSize: 12,
     color: colors.textMuted,
+    marginTop: 2,
   },
-  pickFeedSection: {
-    flex: 1,
+  playerRowRight: {
+    alignItems: 'flex-end',
   },
-  pickItem: {
-    flexDirection: 'row',
-    padding: spacing.sm,
+  playerFpts: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  playerFptsLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  drawerToggle: {
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+    transform: [{ translateY: -30 }],
+    backgroundColor: colors.cardBackground,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    borderTopLeftRadius: borderRadius.md,
+    borderBottomLeftRadius: borderRadius.md,
+    borderLeftWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    zIndex: 10,
+  },
+  drawerToggleText: {
+    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  drawer: {
+    width: '40%',
+    backgroundColor: colors.backgroundLight,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+    padding: spacing.md,
+  },
+  drawerHeader: {
+    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  pickItemNumber: {
-    width: 30,
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
+  drawerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  pickItemContent: {
+  drawerSection: {
+    marginBottom: spacing.lg,
+  },
+  drawerSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: spacing.sm,
+  },
+  drawerItemContent: {
     flex: 1,
   },
-  pickItemPlayer: {
+  drawerItemName: {
     fontSize: 14,
+    fontWeight: '600',
     color: colors.textPrimary,
-    fontWeight: '500',
   },
-  pickItemUser: {
+  drawerItemMeta: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  pickNumberBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+    width: 28,
   },
 });

@@ -40,6 +40,7 @@ export const useDraftState = ({
       case 'user_joined':
       case 'user_left':
         if (message.participants) {
+          console.log('User joined/left event:', message.user, 'Participants:', message.participants);
           setState((prev) => ({
             ...prev,
             room: prev.room
@@ -82,6 +83,9 @@ export const useDraftState = ({
                 : prev.myTeam,
             currentTurn: message.next_turn || null,
             isMyTurn: message.next_turn === userName,
+            room: prev.room
+              ? { ...prev.room, current_pick: message.pick_number }
+              : prev.room,
           };
         });
         break;

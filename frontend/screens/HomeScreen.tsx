@@ -32,6 +32,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     try {
       const response = await apiService.createRoom({
         name: roomName,
+        host_name: userName,
         turn_time_sec: 30,
         total_rounds: 3,
       });

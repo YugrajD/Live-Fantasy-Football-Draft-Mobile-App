@@ -20,6 +20,7 @@ def generate_room_code() -> str:
 
 class CreateRoomRequest(BaseModel):
     name: str
+    host_name: str
     turn_time_sec: int = 30
     total_rounds: int = 3
 
@@ -77,10 +78,10 @@ async def create_room(
     db.add(room)
     await db.flush()
     
-    # Create host participant
+    # Create host participant using provided host_name
     host = Participant(
         room_id=room.id,
-        user_name="Host",  # Default host name, can be changed
+        user_name=request.host_name,
         draft_position=1,
         is_host=True
     )
@@ -151,6 +152,26 @@ async def join_room(
     # Check if user already exists
     existing = await get_participant(db, room_id, request.user_name)
     if existing:
+        # User already exists - broadcast updated participant list anyway
+        participants = await get_participants_by_room(db, room_id)
+        participants_data = [
+            {
+                "id": str(p.id),
+                "user_name": p.user_name,
+                "draft_position": p.draft_position,
+                "is_host": p.is_host
+            }
+            for p in participants
+        ]
+        
+        # Broadcast user joined (they're connecting from another device)
+        from websocket.manager import manager
+        await manager.broadcast(str(room_id), {
+            "event": "user_joined",
+            "user": request.user_name,
+            "participants": participants_data
+        })
+        
         return JoinRoomResponse(
             participant_id=existing.id,
             draft_position=existing.draft_position
@@ -170,6 +191,26 @@ async def join_room(
     db.add(participant)
     await db.commit()
     await db.refresh(participant)
+    
+    # Get updated participants list
+    participants = await get_participants_by_room(db, room_id)
+    participants_data = [
+        {
+            "id": str(p.id),
+            "user_name": p.user_name,
+            "draft_position": p.draft_position,
+            "is_host": p.is_host
+        }
+        for p in participants
+    ]
+    
+    # Broadcast user joined
+    from websocket.manager import manager
+    await manager.broadcast(str(room_id), {
+        "event": "user_joined",
+        "user": request.user_name,
+        "participants": participants_data
+    })
     
     return JoinRoomResponse(
         participant_id=participant.id,

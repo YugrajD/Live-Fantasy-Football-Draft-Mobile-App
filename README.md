@@ -1,154 +1,387 @@
 # Live Fantasy Football Draft Demo
 
-A real-time fantasy football draft application demonstrating multiplayer WebSocket synchronization, event-driven architecture, and full-stack development skills.
+A real-time multiplayer fantasy football draft application showcasing WebSocket synchronization, event-driven architecture, and full-stack development. Built for demonstrating technical capabilities in real-time systems, distributed architecture, and mobile app development.
 
-## Tech Stack
+## 🎯 Features
 
-- **Frontend:** React Native (Expo)
-- **Backend:** Python FastAPI
-- **Database:** PostgreSQL
-- **Real-time:** WebSockets (native FastAPI support)
-- **Queue:** AWS SQS via LocalStack (for async post-draft processing)
-- **Containerization:** Docker + Docker Compose
+- **Real-time Multiplayer Draft** - Live synchronization across multiple devices via WebSockets
+- **Snake Draft Order** - Traditional fantasy draft format (1,2,3,4,4,3,2,1...)
+- **Pick Timer** - 30-second countdown with auto-pick on timeout
+- **Live Updates** - Real-time pick feed, team rosters, and turn indicators
+- **Event-Driven Architecture** - SQS queue for async post-draft processing
+- **Modern Mobile UI** - Dark theme, professional design, responsive layout
+- **Multi-Device Support** - Same user can connect from multiple devices simultaneously
 
-## Quick Start
+## 🛠 Tech Stack
 
-### Prerequisites
+### Frontend
+- **React Native** with Expo
+- **TypeScript** for type safety
+- **React Navigation** for routing
+- **WebSocket** for real-time communication
 
-- Docker and Docker Compose
-- Node.js and npm (for frontend development)
+### Backend
+- **Python FastAPI** - Modern async web framework
+- **PostgreSQL** - Relational database
+- **SQLAlchemy** (async) - ORM
+- **WebSockets** - Native FastAPI support
+- **AWS SQS** (via LocalStack) - Message queue for async processing
 
-### Backend Setup
+### Infrastructure
+- **Docker & Docker Compose** - Containerization and orchestration
+- **LocalStack** - Local AWS services for development
 
-1. Start all services:
+## 📋 Prerequisites
+
+- **Docker** and **Docker Compose** (for backend services)
+- **Node.js** 18+ and **npm** (for frontend)
+- **Expo CLI** (install globally: `npm install -g expo-cli`)
+- **Expo Go** app on your mobile device (iOS/Android)
+
+## 🚀 Quick Start
+
+### 1. Clone and Setup
+
+```bash
+git clone <repository-url>
+cd Live-Fantasy-Football-Draft-Mobile-App
+```
+
+### 2. Start Backend Services
+
 ```bash
 docker-compose up -d
 ```
 
-This will start:
-- PostgreSQL database on port 5432
-- LocalStack (SQS) on port 4566
-- FastAPI backend on port 8000
-- Worker process for SQS queue
+This starts:
+- **PostgreSQL** on port `5432`
+- **LocalStack** (SQS) on port `4566`
+- **FastAPI Backend** on port `8000`
+- **Worker Process** for SQS queue consumption
 
-2. The backend will automatically:
-   - Create database tables
-   - Seed player data (~50 NFL players)
-   - Initialize SQS queue
+The backend will automatically:
+- Create database tables on first run
+- Seed ~50 NFL players with stats
+- Initialize SQS queue
 
-### Frontend Setup
+### 3. Configure Network (For Physical Devices)
 
-1. Navigate to frontend directory:
+**Important:** For testing on physical devices, update the IP address in the frontend config:
+
+1. Find your computer's local IP:
+   ```bash
+   # Mac/Linux
+   ifconfig | grep "inet " | grep -v 127.0.0.1
+   
+   # Windows
+   ipconfig
+   ```
+
+2. Update `frontend/src/config.ts`:
+   ```typescript
+   const LOCAL_IP = '10.0.0.232'; // <- Change to your IP
+   ```
+
+### 4. Start Frontend
+
 ```bash
 cd frontend
-```
-
-2. Install dependencies (if not already done):
-```bash
 npm install
-```
-
-3. Start Expo development server:
-```bash
 npm start
 ```
 
-4. Run on your device:
-   - Scan QR code with Expo Go app (iOS/Android)
-   - Or press `i` for iOS simulator / `a` for Android emulator
+### 5. Run on Device
 
-## Testing the Flow
+- **Physical Device:** Scan QR code with Expo Go app
+- **iOS Simulator:** Press `i` in terminal
+- **Android Emulator:** Press `a` in terminal
 
-1. **Create Room:**
-   - Open app on device 1
-   - Enter your name and room name
-   - Click "Create Room"
-   - Note the room code (e.g., "ABCD")
+## 📱 Usage Flow
 
-2. **Join Room:**
-   - Open app on device 2
-   - Enter your name and the room code
-   - Click "Join Room"
+### Creating a Room
 
-3. **Start Draft:**
-   - Host clicks "Start Draft" in lobby
-   - Both devices navigate to draft screen
+1. Open app on your device
+2. Enter your display name and room name
+3. Tap "Create Room"
+4. Note the room code (e.g., "ABCD")
 
-4. **Make Picks:**
-   - Players take turns selecting players
-   - Real-time updates sync across all devices
-   - Timer counts down (30 seconds default)
-   - Auto-pick occurs if timer expires
+### Joining a Room
 
-5. **View Results:**
-   - After all picks, view final teams
-   - Teams ranked by total fantasy points
-   - SQS worker processes results in background
+1. Open app on another device (or same device with different name)
+2. Enter your display name and the room code
+3. Tap "Join Room"
+4. Wait in lobby for host to start
 
-## API Endpoints
+### Starting the Draft
 
-### REST Endpoints
+1. Host taps "Start Draft" in lobby
+2. All participants automatically navigate to draft screen
+3. Draft begins with first player's turn
 
-- `POST /api/rooms` - Create a new draft room
+### Making Picks
+
+1. When it's your turn, timer appears (30 seconds)
+2. Search for players by name
+3. Tap a player card to select
+4. Confirm your pick
+5. Next player's turn begins automatically
+
+### Viewing Results
+
+- After all picks complete, view final team rosters
+- Teams ranked by total fantasy points
+- SQS worker processes results in background
+
+## 🏗 Architecture
+
+### System Components
+
+```
+┌─────────────┐
+│   Mobile    │
+│   Clients   │
+└──────┬──────┘
+       │ WebSocket
+       │ REST API
+┌──────▼─────────────────┐
+│   FastAPI Backend      │
+│  - REST Endpoints      │
+│  - WebSocket Manager   │
+│  - Draft Logic         │
+│  - Timer Service       │
+└──────┬─────────────────┘
+       │
+       ├──────────┬──────────┐
+       │          │          │
+┌──────▼──┐ ┌────▼────┐ ┌───▼──────┐
+│PostgreSQL│ │LocalStack│ │  Worker  │
+│ Database │ │   SQS    │ │ Process  │
+└──────────┘ └──────────┘ └──────────┘
+```
+
+### WebSocket Events
+
+**Client → Server:**
+- `pick` - Make a draft pick
+
+**Server → Client:**
+- `sync` - Full state sync on connect
+- `user_joined` - Participant joined room
+- `user_left` - Participant left room
+- `draft_started` - Draft has begun
+- `pick_made` - A pick was made
+- `timer_tick` - Timer countdown update
+- `draft_complete` - Draft finished
+
+### Database Schema
+
+- **draft_rooms** - Room configuration and status
+- **participants** - Room participants and draft positions
+- **players** - NFL player data with stats
+- **picks** - Draft selections (room, participant, player, pick number)
+
+## 📡 API Endpoints
+
+### REST API
+
+**Rooms:**
+- `POST /api/rooms` - Create room
 - `GET /api/rooms/{room_id}` - Get room details
 - `GET /api/rooms/code/{code}` - Get room by code
-- `POST /api/rooms/{room_id}/join` - Join a room
-- `POST /api/rooms/{room_id}/start` - Start the draft
+- `POST /api/rooms/{room_id}/join` - Join room
+- `POST /api/rooms/{room_id}/start` - Start draft
+
+**Players:**
 - `GET /api/players` - Get all players
 - `GET /api/players/rooms/{room_id}/available` - Get available players
+
+**Picks:**
 - `GET /api/rooms/{room_id}/picks` - Get all picks
 - `GET /api/rooms/{room_id}/teams` - Get final teams
 
 ### WebSocket
 
-- `WS /ws/{room_id}/{user_name}` - Real-time draft updates
+- `WS /ws/{room_id}/{user_name}` - Connect to room
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 ├── backend/
 │   ├── api/              # REST API endpoints
-│   ├── db/               # Database models and queries
+│   │   ├── rooms.py      # Room management
+│   │   ├── players.py    # Player data
+│   │   ├── picks.py      # Pick history
+│   │   └── websocket.py  # WebSocket endpoint
+│   ├── db/               # Database layer
+│   │   ├── models.py     # SQLAlchemy models
+│   │   ├── queries.py    # Database queries
+│   │   └── database.py   # Connection setup
 │   ├── websocket/        # WebSocket handlers
-│   ├── services/         # Business logic (draft, timer, queue)
-│   ├── worker/           # SQS consumer
-│   └── seed/             # Player seed data
+│   │   ├── manager.py   # Connection management
+│   │   └── handlers.py   # Message handlers
+│   ├── services/         # Business logic
+│   │   ├── draft.py      # Draft order & validation
+│   │   ├── timer.py      # Pick timer logic
+│   │   └── queue.py      # SQS integration
+│   ├── worker/           # Background worker
+│   │   └── worker.py     # SQS consumer
+│   ├── seed/             # Seed data
+│   │   └── players.py    # NFL player data
+│   └── main.py           # FastAPI app entry
 │
 ├── frontend/
 │   ├── screens/          # App screens
+│   │   ├── HomeScreen.tsx
+│   │   ├── LobbyScreen.tsx
+│   │   ├── DraftScreen.tsx
+│   │   └── ResultsScreen.tsx
 │   ├── components/       # Reusable components
+│   │   ├── PlayerCard.tsx
+│   │   ├── Timer.tsx
+│   │   └── TurnIndicator.tsx
 │   ├── hooks/            # Custom React hooks
+│   │   ├── useWebSocket.ts
+│   │   └── useDraftState.ts
 │   ├── services/         # API client
+│   │   └── api.ts
+│   ├── src/              # Configuration
+│   │   ├── config.ts     # API/WS URLs
+│   │   └── theme.ts      # Design system
 │   └── types/            # TypeScript types
+│       └── index.ts
+│
+├── localstack/           # LocalStack init scripts
+│   └── init-sqs.sh
 │
 └── docker-compose.yml    # Service orchestration
 ```
 
-## Features
+## ⚙️ Configuration
 
-- ✅ Real-time multiplayer synchronization via WebSockets
-- ✅ Snake draft order (1,2,3,4,4,3,2,1...)
-- ✅ Pick timer with auto-pick on timeout
-- ✅ Live pick feed and team rosters
-- ✅ Event-driven architecture with SQS
-- ✅ Async worker processing
-- ✅ Responsive mobile UI
+### Backend Environment Variables
 
-## Development Notes
+Set in `docker-compose.yml`:
+- `DATABASE_URL` - PostgreSQL connection string
+- `SQS_ENDPOINT` - LocalStack SQS endpoint
+- `SQS_QUEUE_URL` - SQS queue URL
 
-- Backend runs on `http://localhost:8000`
-- Frontend connects to backend via `http://localhost:8000` (change in `frontend/services/api.ts` for production)
-- WebSocket URL: `ws://localhost:8000/ws/{room_id}/{user_name}`
-- Database auto-creates tables on first run
-- Player data seeds automatically if database is empty
+### Frontend Configuration
 
-## Troubleshooting
+Edit `frontend/src/config.ts`:
+```typescript
+const LOCAL_IP = '10.0.0.232'; // Your computer's local IP
+const DEV_MODE = true;
 
-- **WebSocket connection fails:** Ensure backend is running and accessible
-- **Database errors:** Check Docker containers are running (`docker-compose ps`)
-- **Frontend can't connect:** Verify API_BASE_URL in `frontend/services/api.ts`
-- **SQS not working:** Check LocalStack logs (`docker-compose logs localstack`)
+export const config = {
+  API_URL: DEV_MODE 
+    ? `http://${LOCAL_IP}:8000/api`
+    : 'https://your-production-url.com/api',
+  
+  WS_URL: DEV_MODE
+    ? `ws://${LOC_IP}:8000/ws`
+    : 'wss://your-production-url.com/ws',
+};
+```
 
-## License
+## 🐛 Troubleshooting
+
+### Backend Issues
+
+**Services won't start:**
+```bash
+docker-compose down
+docker-compose up -d
+docker-compose logs backend
+```
+
+**Database connection errors:**
+- Check PostgreSQL is healthy: `docker-compose ps db`
+- Verify DATABASE_URL in docker-compose.yml
+
+**WebSocket connection fails:**
+- Ensure backend is running: `curl http://localhost:8000/api/players`
+- Check backend logs: `docker-compose logs backend`
+
+### Frontend Issues
+
+**Can't connect to backend:**
+- Verify `LOCAL_IP` in `frontend/src/config.ts` matches your computer's IP
+- Ensure backend is accessible: `curl http://YOUR_IP:8000/api/players`
+- Check firewall isn't blocking port 8000
+
+**QR code shows "no usable data":**
+- Update `LOCAL_IP` in config.ts to your computer's local network IP
+- Restart Expo: `npm start` in frontend directory
+
+**WebSocket 403 Forbidden:**
+- Ensure display name matches when creating/joining room
+- Check backend logs for connection errors
+
+### SQS/LocalStack Issues
+
+**Queue not working:**
+```bash
+docker-compose logs localstack
+docker-compose restart localstack
+```
+
+## 🧪 Development
+
+### Running Backend in Development
+
+Backend auto-reloads on file changes (via `--reload` flag).
+
+### Running Frontend in Development
+
+Expo hot-reloads on save. Shake device or press `r` in terminal to reload.
+
+### Database Migrations
+
+Tables are auto-created on first run. For manual migrations, connect to PostgreSQL:
+```bash
+docker-compose exec db psql -U draft -d fantasy_draft
+```
+
+### Adding New Players
+
+Edit `backend/seed/players.py` and restart backend to re-seed.
+
+## 📝 API Documentation
+
+Once backend is running, visit:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
+## 🎨 UI Design
+
+The app uses a dark, professional theme inspired by EdgeSports:
+- **Primary Color:** Green (#10b981) for CTAs and active states
+- **Background:** Dark navy (#0a1128)
+- **Cards:** Darker blue (#162038)
+- **Text:** White/light gray for hierarchy
+
+## 🔒 Security Notes
+
+This is a demo application. For production:
+- Add authentication/authorization
+- Use HTTPS/WSS
+- Validate and sanitize all inputs
+- Implement rate limiting
+- Add CORS configuration
+- Secure database credentials
+- Use environment variables for secrets
+
+## 📄 License
 
 MIT
+
+## 👤 Author
+
+Built as a technical demonstration of real-time systems, event-driven architecture, and full-stack mobile development.
+
+---
+
+**Need help?** Check the logs:
+- Backend: `docker-compose logs backend`
+- Frontend: Check Expo terminal output
+- Database: `docker-compose logs db`
